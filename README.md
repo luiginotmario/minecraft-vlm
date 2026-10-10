@@ -34,7 +34,7 @@ Open the printed URL in Chrome, Edge or Safari, then click **Play with camera**.
 
 | Keys | Action |
 |---|---|
-| WASD, Space, Shift | Move, jump, sprint |
+| WASD or arrow keys, Space, Shift | Move, jump, sprint. Works together with jogging and leaning. |
 | Mouse | Look (click to lock the pointer), left mine, right place |
 | 1–9, scroll | Select block |
 | F | Toggle flying (Space up, Shift down) |

@@ -200,7 +200,7 @@ window.addEventListener('keydown', (e) => {
     showStats = !showStats;
     if (!showStats) hud.stats('');
   }
-  if (e.code === 'Space' || e.code === 'Tab') e.preventDefault();
+  if (e.code === 'Space' || e.code === 'Tab' || e.code.startsWith('Arrow')) e.preventDefault();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => {
@@ -435,8 +435,12 @@ function tick(now: number) {
   if (playing) {
     const key = (c: string) => (keys.has(c) ? 1 : 0);
     const jogging = tracker.active ? gestures.jog : 0;
-    move.forward = Math.max(-1, Math.min(1, key('KeyW') - key('KeyS') + (jogging ? 1 : 0) + (tracker.active ? gestures.lean : 0)));
-    move.right = key('KeyD') - key('KeyA');
+    // Every source adds up, so keys, arrows, jogging and leaning all work
+    // together; whichever you're using, you move.
+    const fwd = Math.max(key('KeyW'), key('ArrowUp')) - Math.max(key('KeyS'), key('ArrowDown'));
+    const body = (jogging ? 1 : 0) + (tracker.active ? gestures.lean : 0);
+    move.forward = Math.max(-1, Math.min(1, fwd + body));
+    move.right = Math.max(key('KeyD'), key('ArrowRight')) - Math.max(key('KeyA'), key('ArrowLeft'));
     move.jump = keys.has('Space') || now < jumpPulseUntil;
     move.down = player.fly && (keys.has('ShiftLeft') || keys.has('ShiftRight'));
     move.sprint = !player.fly && (keys.has('ShiftLeft') || keys.has('ShiftRight') || jogging === 2);
