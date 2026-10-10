@@ -45,7 +45,7 @@ export const T = {
   JOG_WINDOW_MS: 1300,
   JOG_STOP_MS: 520,
   JOG_SPRINT_CADENCE: 5, // crossings per second
-  JUMP_V: 3.2,
+  JUMP_V: 2.6,
   JOG_PENALTY: 1.8, // swing and jump thresholds rise while jogging (arms pump, head bobs)
   LEAN_ON: 0.16,
   CALIBRATION_MS: 900,

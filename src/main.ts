@@ -209,9 +209,10 @@ window.addEventListener('blur', () => {
 
 canvas.addEventListener('mousedown', (e) => {
   if (menuOpen) return;
-  if (!pointerLocked && !tracker.active) {
+  if (!pointerLocked) {
     lockPointer();
-    return;
+    // Without the camera the first click only grabs the mouse.
+    if (!tracker.active) return;
   }
   if (e.button === 0) {
     mouseMine = true;
@@ -237,8 +238,10 @@ document.addEventListener('mousemove', (e) => {
   player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch - e.movementY * k));
 });
 document.addEventListener('pointerlockchange', () => {
+  const was = pointerLocked;
   pointerLocked = document.pointerLockElement === canvas;
-  if (!pointerLocked && !menuOpen && !tracker.active) setMenu(true);
+  // Esc releases the pointer before we see the key, so open the menu here.
+  if (was && !pointerLocked && !menuOpen) setMenu(true);
 });
 
 // ───────────────────────── camera control ─────────────────────────
@@ -269,6 +272,10 @@ const GESTURE_LABEL: Record<GestureEvent, string> = {
 tracker.onResult = (frame: VisionFrame) => {
   const events = gestures.update(frame);
   if (gestures.faceVisible) lastFaceSeen = performance.now();
+  if (settings.showPreview) {
+    const stats = `${tracker.hz} Hz · ${tracker.inferMs.toFixed(0)} ms · ${tracker.delegate}`;
+    preview.draw(frame, gestures, settings.headRange, settings.headDeadzone, stats);
+  }
   if (menuOpen || !spawned) return;
   const now = performance.now();
   for (const ev of events) {
@@ -280,10 +287,6 @@ tracker.onResult = (frame: VisionFrame) => {
       case 'prev': selectSlot(slot - 1); sfx.play('select'); break;
       case 'jump': jumpPulseUntil = now + 220; break;
     }
-  }
-  if (settings.showPreview) {
-    const stats = `${tracker.hz} Hz · ${tracker.inferMs.toFixed(0)} ms · ${tracker.delegate}`;
-    preview.draw(frame, gestures, settings.headRange, settings.headDeadzone, stats);
   }
 };
 
@@ -370,6 +373,10 @@ function headRate(deg: number, range: number, dead: number, max: number) {
 
 function frame(now: number) {
   requestAnimationFrame(frame);
+  tick(now);
+}
+
+function tick(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000);
   worstFrame = Math.max(worstFrame, now - last);
   last = now;
@@ -499,4 +506,4 @@ world.update(player.x, player.z, true);
 requestAnimationFrame(frame);
 
 // Expose a few handles for debugging in the console.
-Object.assign(window, { __game: { world, player, gestures, tracker, settings, hand, renderer, camera, scene } });
+Object.assign(window, { __game: { world, player, gestures, tracker, settings, hand, renderer, camera, scene, tick } });

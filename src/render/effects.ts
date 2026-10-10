@@ -118,7 +118,8 @@ export class Particles {
         void main() {
           vColor = color;
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = scale * 0.09 / -mv.z;
+          // ~0.08 world units: px = size * viewportHeight / (2 tan(fov/2) * depth).
+          gl_PointSize = min(scale * 0.05 / -mv.z, scale * 0.03);
           gl_Position = projectionMatrix * mv;
         }`,
       fragmentShader: /* glsl */ `
