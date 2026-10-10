@@ -434,11 +434,10 @@ function tick(now: number) {
   clouds.mesh.position.set(camera.position.x, 118, camera.position.z);
   clouds.uniforms.time.value = now / 1000;
 
-  // Targeting and held actions (mouse or pinch).
+  // Targeting and held mouse buttons.
   if (playing) {
     interaction.updateTarget(camera, now);
-    const holdMine = mouseMine || (tracker.active && gestures.mineHold);
-    if (holdMine) {
+    if (mouseMine) {
       mineTimer -= dt;
       if (mineTimer <= 0) {
         interaction.hit(now);

@@ -30,7 +30,7 @@ function face(yawDeg: number, pitchDeg: number, cx = 0.5, cy = 0.45, scale = 0.2
   return out;
 }
 
-type Pose = 'open' | 'fist' | 'ok';
+type Pose = 'open' | 'fist' | 'pinch';
 const OPEN: [number, number][] = [
   [0, 0.5], [-0.3, 0.3], [-0.5, 0.1], [-0.65, -0.1], [-0.8, -0.25],
   [-0.25, -0.45], [-0.3, -0.85], [-0.32, -1.05], [-0.34, -1.25],
@@ -48,10 +48,12 @@ function hand(cx: number, cy: number, size: number, pose: Pose = 'open'): HandFr
       pts[mcp + 3] = [f, -0.35];
     }
     pts[4] = [-0.3, -0.1];
-  } else if (pose === 'ok') {
-    pts[4] = [-0.45, -0.55];
-    pts[8] = [-0.47, -0.58];
-    pts[7] = [-0.4, -0.75];
+  } else if (pose === 'pinch') {
+    // Index bends to meet the thumb; the tip stays well away from its knuckle.
+    pts[6] = [-0.38, -0.85];
+    pts[7] = [-0.45, -0.95];
+    pts[8] = [-0.5, -0.95];
+    pts[4] = [-0.52, -0.92];
   }
   const lm = new Float32Array(63);
   pts.forEach(([x, y], i) => {
@@ -236,30 +238,48 @@ describe('hands', () => {
     expect(s.count('hit')).toBe(1);
   });
 
-  it('pushing an open palm places; pushing a fist hits', () => {
+  it('pushing an open palm does nothing; punching with a fist hits', () => {
     const s = new Sim();
     s.calibrate();
     let size = 0.09;
     for (let i = 0; i < 6; i++) s.step(still(), [hand(0.5, 0.5, size)]);
     for (let i = 0; i < 4; i++) { size *= 1.12; s.step(still(), [hand(0.5, 0.5, size)]); }
     for (let i = 0; i < 6; i++) s.step(still(), [hand(0.5, 0.5, size)]);
-    expect(s.count('place')).toBe(1);
+    expect(s.events).toEqual([]);
     for (let i = 0; i < 12; i++) { size /= 1.05; s.step(still(), [hand(0.5, 0.5, size, 'fist')]); }
     for (let i = 0; i < 6; i++) s.step(still(), [hand(0.5, 0.5, size, 'fist')]);
     for (let i = 0; i < 4; i++) { size *= 1.12; s.step(still(), [hand(0.5, 0.5, size, 'fist')]); }
-    expect(s.count('place')).toBe(1);
     expect(s.count('hit')).toBe(1);
+    expect(s.count('place')).toBe(0);
   });
 
-  it('OK-sign pinch holds mining', () => {
+  it('each pinch places exactly one block', () => {
     const s = new Sim();
     s.calibrate();
-    for (let i = 0; i < 5; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'ok')]);
-    expect(s.g.mineHold).toBe(true);
-    for (let i = 0; i < 5; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'open')]);
-    expect(s.g.mineHold).toBe(false);
-    for (let i = 0; i < 5; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'fist')]);
-    expect(s.g.mineHold).toBe(false);
+    for (let rep = 0; rep < 3; rep++) {
+      for (let i = 0; i < 5; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'open')]);
+      for (let i = 0; i < 10; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'pinch')]); // held: still one
+    }
+    expect(s.count('place')).toBe(3);
+  });
+
+  it('a closed fist is not a pinch', () => {
+    const s = new Sim();
+    s.calibrate();
+    for (let i = 0; i < 20; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'fist')]);
+    expect(s.count('place')).toBe(0);
+    expect(s.g.hands[0].pinched).toBe(false);
+  });
+
+  it('a pinch that closes mid-motion places once the hand settles', () => {
+    const s = new Sim();
+    s.calibrate();
+    let x = 0.3;
+    for (let i = 0; i < 4; i++) s.step(still(), [hand(x, 0.5, 0.1)]);
+    for (let i = 0; i < 3; i++) { x += 0.02; s.step(still(), [hand(x, 0.5, 0.1, 'pinch')]); } // moving ~6 sizes/s
+    expect(s.count('place')).toBe(0);
+    for (let i = 0; i < 6; i++) s.step(still(), [hand(x, 0.5, 0.1, 'pinch')]);
+    expect(s.count('place')).toBe(1);
   });
 
   it('tracks two hands independently', () => {

@@ -24,10 +24,10 @@ export function buildSettings(
 
     { kind: 'group', label: 'Gestures' },
     { kind: 'range', label: 'Sensitivity', min: 0.5, max: 2, step: 0.05, get: () => g.sensitivity, set: (v) => (g.sensitivity = v), fmt: (v) => `${v.toFixed(2)}×` },
-    { kind: 'toggle', label: 'Chop / punch to mine', get: () => g.swing, set: (v) => (g.swing = v) },
-    { kind: 'toggle', label: 'Push palm to place', get: () => g.push, set: (v) => (g.push = v) },
+    { kind: 'toggle', label: 'Chop to mine', get: () => g.swing, set: (v) => (g.swing = v) },
+    { kind: 'toggle', label: 'Punch to mine', get: () => g.push, set: (v) => (g.push = v) },
     { kind: 'toggle', label: 'Swipe to switch block', get: () => g.swipe, set: (v) => (g.swipe = v) },
-    { kind: 'toggle', label: 'Pinch to keep mining', get: () => g.pinch, set: (v) => (g.pinch = v) },
+    { kind: 'toggle', label: 'Pinch to place', get: () => g.pinch, set: (v) => (g.pinch = v) },
     { kind: 'toggle', label: 'Jog in place to walk', get: () => g.jog, set: (v) => (g.jog = v) },
     { kind: 'toggle', label: 'Hop to jump', get: () => g.jump, set: (v) => (g.jump = v) },
     { kind: 'toggle', label: 'Lean in to walk', get: () => g.lean, set: (v) => (g.lean = v) },

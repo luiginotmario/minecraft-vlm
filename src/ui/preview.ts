@@ -77,8 +77,9 @@ export class Preview {
     this.moveEl.textContent = g.calibrating ? 'Hold still…' : move;
     this.moveEl.classList.toggle('on', g.jog > 0 || g.lean !== 0);
     const hands = g.hands.length;
-    this.handsEl.textContent = g.mineHold ? 'Pinch: mining' : hands ? `${hands} hand${hands > 1 ? 's' : ''}` : 'No hands';
-    this.handsEl.classList.toggle('on', g.mineHold);
+    const pinching = g.hands.some((h) => h.pinched);
+    this.handsEl.textContent = pinching ? 'Pinch' : hands ? `${hands} hand${hands > 1 ? 's' : ''}` : 'No hands';
+    this.handsEl.classList.toggle('on', pinching);
     if (this.rateEl.textContent !== stats) this.rateEl.textContent = stats;
   }
 

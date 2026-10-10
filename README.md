@@ -25,9 +25,8 @@ Open the printed URL in Chrome, Edge or Safari, then click **Play with camera**.
 | Turn or tilt your head | Look around. Small movements map directly; hold your head turned past the deadzone and the view keeps turning, like a joystick. |
 | Chop down fast with either hand, or both like an axe | Hit the block under the crosshair. Dirt breaks in one hit, wood in two, stone in three, ore in four. |
 | Punch toward the camera with a fist | Hit |
-| Push an open palm toward the camera | Place the selected block |
+| Pinch thumb and index together | Place the selected block (one per pinch; release and pinch again for the next) |
 | Swipe sideways with fingers out | Next block (swipe to your right) or previous (to your left) |
-| Pinch thumb and index, other fingers out (OK sign), and hold | Keep mining |
 | Jog in place | Walk forward; jog faster to sprint |
 | Hop | Jump |
 | Lean toward the screen (off by default) | Walk forward |
@@ -55,7 +54,8 @@ MediaPipe's FaceLandmarker and HandLandmarker run in a Web Worker on the GPU (CP
 - **Hand motion**: palm centre velocity is measured in *hand sizes per second*, so thresholds don't depend on how far you sit from the camera.
 - **Chop**: fires the moment downward speed crosses the threshold (not at the peak), so the hit lands mid-swing. If the hand disappears during a fast downward swing, which happens when motion blur makes it untrackable, that still counts as a hit.
 - **Swipe**: must be mostly horizontal with at least two fingers out. The return stroke in the opposite direction is ignored for half a second.
-- **Push and punch**: the rate of change of log hand size. An open palm places; a fist hits.
+- **Pinch**: the 3D gap between the thumb and index tips, relative to palm size. The index tip must also reach away from its knuckle, which rules out a closed fist (where the thumb rests on the index too). Each pinch places once; the hand has to be fairly still, so fingers brushing during a swipe don't count.
+- **Punch**: the rate of change of log hand size with a fist.
 - **Jog**: head height is high-pass filtered and bob crossings are counted. Three within 1.3 s means walking; a high cadence means sprinting. While you jog, the chop and hop thresholds go up because your arms and head are already moving.
 - **Hop**: a fast upward head movement.
 
