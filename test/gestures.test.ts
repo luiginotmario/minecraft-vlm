@@ -30,7 +30,7 @@ function face(yawDeg: number, pitchDeg: number, cx = 0.5, cy = 0.45, scale = 0.2
   return out;
 }
 
-type Pose = 'open' | 'fist' | 'pinch';
+type Pose = 'open' | 'fist' | 'pinch' | 'axe';
 const OPEN: [number, number][] = [
   [0, 0.5], [-0.3, 0.3], [-0.5, 0.1], [-0.65, -0.1], [-0.8, -0.25],
   [-0.25, -0.45], [-0.3, -0.85], [-0.32, -1.05], [-0.34, -1.25],
@@ -41,13 +41,20 @@ const OPEN: [number, number][] = [
 
 function hand(cx: number, cy: number, size: number, pose: Pose = 'open'): HandFrame {
   const pts = OPEN.map((p) => [...p] as [number, number]);
-  if (pose === 'fist') {
+  if (pose === 'fist' || pose === 'axe') {
     for (const [mcp, f] of [[5, -0.27], [9, 0], [13, 0.24], [17, 0.44]] as const) {
       pts[mcp + 1] = [f, -0.7];
       pts[mcp + 2] = [f, -0.5];
       pts[mcp + 3] = [f, -0.35];
     }
     pts[4] = [-0.3, -0.1];
+    if (pose === 'axe') {
+      // Gripping a handle: index wraps round to meet the thumb, the rest stay folded.
+      pts[6] = [-0.4, -0.8];
+      pts[7] = [-0.55, -0.88];
+      pts[8] = [-0.6, -0.85];
+      pts[4] = [-0.6, -0.82];
+    }
   } else if (pose === 'pinch') {
     // Index bends to meet the thumb; the tip stays well away from its knuckle.
     pts[6] = [-0.38, -0.85];
@@ -263,6 +270,13 @@ describe('hands', () => {
     expect(s.count('place')).toBe(3);
   });
 
+  it('an axe grip held still is not a pinch', () => {
+    const s = new Sim();
+    s.calibrate();
+    for (let i = 0; i < 20; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'axe')]);
+    expect(s.count('place')).toBe(0);
+  });
+
   it('a closed fist is not a pinch', () => {
     const s = new Sim();
     s.calibrate();
@@ -271,15 +285,42 @@ describe('hands', () => {
     expect(s.g.hands[0].pinched).toBe(false);
   });
 
-  it('a pinch that closes mid-motion places once the hand settles', () => {
+  it('a pinch that closes mid-motion never places; a fresh still pinch does', () => {
     const s = new Sim();
     s.calibrate();
     let x = 0.3;
     for (let i = 0; i < 4; i++) s.step(still(), [hand(x, 0.5, 0.1)]);
     for (let i = 0; i < 3; i++) { x += 0.02; s.step(still(), [hand(x, 0.5, 0.1, 'pinch')]); } // moving ~6 sizes/s
+    for (let i = 0; i < 8; i++) s.step(still(), [hand(x, 0.5, 0.1, 'pinch')]); // settles, still pinched
     expect(s.count('place')).toBe(0);
-    for (let i = 0; i < 6; i++) s.step(still(), [hand(x, 0.5, 0.1, 'pinch')]);
+    for (let i = 0; i < 4; i++) s.step(still(), [hand(x, 0.5, 0.1, 'open')]); // release
+    for (let i = 0; i < 4; i++) s.step(still(), [hand(x, 0.5, 0.1, 'pinch')]);
     expect(s.count('place')).toBe(1);
+  });
+
+  it('chopping never places, even if the grip looks like a pinch', () => {
+    const s = new Sim();
+    s.calibrate();
+    for (let rep = 0; rep < 4; rep++) {
+      let y = 0.3;
+      for (let i = 0; i < 6; i++) s.step(still(), [hand(0.6, y, 0.1, 'axe')]);
+      for (let i = 0; i < 5; i++) { y += 0.05; s.step(still(), [hand(0.6, y, 0.1, 'axe')]); }
+      for (let i = 0; i < 4; i++) s.step(still(), [hand(0.6, y, 0.1, 'axe')]); // settle in the grip
+      for (let i = 0; i < 12; i++) { y -= 0.02; s.step(still(), [hand(0.6, y, 0.1, 'axe')]); }
+    }
+    expect(s.count('hit')).toBe(4);
+    expect(s.count('place')).toBe(0);
+  });
+
+  it('settling into a pinch grip right after a chop does not place', () => {
+    const s = new Sim();
+    s.calibrate();
+    let y = 0.3;
+    for (let i = 0; i < 6; i++) s.step(still(), [hand(0.6, y, 0.1, 'fist')]);
+    for (let i = 0; i < 5; i++) { y += 0.05; s.step(still(), [hand(0.6, y, 0.1, 'fist')]); }
+    for (let i = 0; i < 8; i++) s.step(still(), [hand(0.6, y, 0.1, 'pinch')]); // fingers meet as the arm stops
+    expect(s.count('hit')).toBe(1);
+    expect(s.count('place')).toBe(0);
   });
 
   it('tracks two hands independently', () => {

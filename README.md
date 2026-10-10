@@ -55,7 +55,7 @@ MediaPipe's FaceLandmarker and HandLandmarker run in a Web Worker on the GPU (CP
 - **Hand motion**: palm centre velocity is measured in *hand sizes per second*, so thresholds don't depend on how far you sit from the camera.
 - **Chop**: fires the moment downward speed crosses the threshold (not at the peak), so the hit lands mid-swing. If the hand disappears during a fast downward swing, which happens when motion blur makes it untrackable, that still counts as a hit.
 - **Swipe**: must be mostly horizontal with at least two fingers out. The return stroke in the opposite direction is ignored for half a second.
-- **Pinch**: the 3D gap between the thumb and index tips, relative to palm size. The index tip must also reach away from its knuckle, which rules out a closed fist (where the thumb rests on the index too). Each pinch places once; the hand has to be fairly still, so fingers brushing during a swipe don't count.
+- **Pinch** (the only way to place): the 3D gap between the thumb and index tips, relative to palm size. The index tip must reach away from its knuckle and at least two of the other fingers must be relaxed, which rules out a fist or an axe grip. The pinch has to start with the hand still, at least 0.7 s after a chop, and be held for two frames. Each pinch places once.
 - **Punch**: the rate of change of log hand size with a fist.
 - **Jog**: head height is high-pass filtered and bob crossings are counted. Three within 1.3 s means walking; a high cadence means sprinting. While you jog, the chop and hop thresholds go up because your arms and head are already moving.
 - **Hop**: a fast upward head movement.

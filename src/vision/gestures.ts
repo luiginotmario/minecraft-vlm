@@ -41,7 +41,10 @@ export const T = {
   PINCH_ON: 0.3, // thumb–index tip gap, in palm lengths
   PINCH_OFF: 0.45,
   PINCH_INDEX_REACH: 0.5, // index tip must be this far from its knuckle (a fist folds it in)
-  PINCH_MAX_SPEED: 4, // hand must be fairly still, so fingers brushing mid-swipe don't place
+  PINCH_MAX_SPEED: 4, // the pinch must start with the hand fairly still
+  PINCH_AFTER_HIT_MS: 700, // an axe grip after a chop looks like a pinch; ignore it
+  PINCH_FRAMES: 2, // held this many frames, so a passing finger brush doesn't count
+  PINCH_RELAXED_FINGERS: 2, // of middle/ring/pinky not folded into the palm (an axe grip folds them)
   JOG_AMP: 0.06, // head bob amplitude (face heights) that counts as a step
   JOG_STEPS: 3, // bob crossings needed within the window to start moving
   JOG_WINDOW_MS: 1300,
@@ -80,6 +83,9 @@ interface HandTrack {
   fingers: number;
   pinched: boolean;
   pinchFired: boolean;
+  /** This pinch began mid-motion or right after a hit; it can't place until released. */
+  pinchBlocked: boolean;
+  pinchFrames: number;
   swingArmed: boolean;
   swingT: number;
   swipeArmed: boolean;
@@ -175,6 +181,8 @@ export class GestureEngine {
   }
 
   private lastEvent: Record<GestureEvent, number> = { hit: -1e9, place: -1e9, next: -1e9, prev: -1e9, jump: -1e9 };
+  /** Last time any hand produced a hit (chop or punch), raw, before dedupe. */
+  private lastHitT = -1e9;
 
   // ───────────────────────── face: look, jog, jump, lean ─────────────────────────
 
@@ -326,6 +334,7 @@ export class GestureEngine {
         tr.vy > this.swingThreshold() * T.SWING_LOST_FRACTION && tr.vy > Math.abs(tr.vx) * T.SWING_DOMINANCE
       ) {
         events.push('hit');
+        this.lastHitT = t;
         tr.swingArmed = false;
         tr.swingT = t;
       }
@@ -344,7 +353,7 @@ export class GestureEngine {
   private newTrack(cx: number, cy: number, t: number): HandTrack {
     const tr: HandTrack = {
       id: this.nextId++, seen: t, prevSeen: t, cx, cy, size: 0, logS: [], logT: [],
-      vx: 0, vy: 0, vs: 0, samples: 0, fingers: 0, pinched: false, pinchFired: false,
+      vx: 0, vy: 0, vs: 0, samples: 0, fingers: 0, pinched: false, pinchFired: false, pinchBlocked: false, pinchFrames: 0,
       swingArmed: true, swingT: -1e9, swipeArmed: true, swipeDir: 0, swipeT: -1e9, pushArmed: true, pushT: -1e9,
     };
     this.tracks.push(tr);
@@ -371,11 +380,25 @@ export class GestureEngine {
     const palm3 = dist3(lm, WRIST, MIDDLE_MCP, ar);
     const pinchR = dist3(lm, THUMB_TIP, INDEX_TIP, ar) / palm3;
     const indexReach = dist3(lm, INDEX_TIP, INDEX_MCP, ar) / palm3;
-    if (!tr.pinched && pinchR < T.PINCH_ON && indexReach > T.PINCH_INDEX_REACH) tr.pinched = true;
-    else if (tr.pinched && pinchR > T.PINCH_OFF) {
+    // Gripping an axe also brings thumb and index together, but curls the
+    // other fingers into a fist; a pinch leaves them relaxed.
+    let relaxed = 0;
+    for (const [tip, pip] of FINGERS.slice(1)) {
+      if (dist3(lm, WRIST, tip, ar) > dist3(lm, WRIST, pip, ar)) relaxed++;
+    }
+    const pinchShape = pinchR < T.PINCH_ON && indexReach > T.PINCH_INDEX_REACH && relaxed >= T.PINCH_RELAXED_FINGERS;
+    if (!tr.pinched && pinchShape) {
+      tr.pinched = true;
+      tr.pinchFrames = 0;
+      // Speed from the previous frame: was the hand already still when the fingers met?
+      const moving = tr.samples > 0 && Math.hypot(tr.vx, tr.vy) >= T.PINCH_MAX_SPEED;
+      tr.pinchBlocked = moving || t - this.lastHitT < T.PINCH_AFTER_HIT_MS;
+    } else if (tr.pinched && pinchR > T.PINCH_OFF) {
       tr.pinched = false;
       tr.pinchFired = false;
+      tr.pinchBlocked = false;
     }
+    if (tr.pinched) tr.pinchFrames++;
 
     if (tr.samples > 0) {
       const dt = Math.max(1, t - tr.seen) / 1000;
@@ -410,6 +433,7 @@ export class GestureEngine {
     if (s.swing) {
       if (tr.swingArmed && tr.vy > swingThr && tr.vy > Math.abs(tr.vx) * T.SWING_DOMINANCE) {
         events.push('hit');
+        this.lastHitT = t;
         tr.swingArmed = false;
         tr.swingT = t;
       } else if (!tr.swingArmed && tr.vy < T.SWING_REARM_V && t - tr.swingT > 140) {
@@ -439,9 +463,12 @@ export class GestureEngine {
       }
     }
 
-    // Pinch places one block per pinch; release to place again. If the pinch
-    // closes mid-motion it fires as soon as the hand settles.
-    if (s.pinch && tr.pinched && !tr.pinchFired && speed < T.PINCH_MAX_SPEED) {
+    // Pinch is the only way to place: one block per deliberate pinch, started
+    // with the hand still and not right after a chop. Release to place again.
+    if (s.pinch && tr.pinched && !tr.pinchFired) {
+      if (speed >= T.PINCH_MAX_SPEED || t - this.lastHitT < T.PINCH_AFTER_HIT_MS) tr.pinchBlocked = true;
+    }
+    if (s.pinch && tr.pinched && !tr.pinchFired && !tr.pinchBlocked && tr.pinchFrames >= T.PINCH_FRAMES) {
       events.push('place');
       tr.pinchFired = true;
     }
@@ -451,6 +478,7 @@ export class GestureEngine {
       const thr = T.PUSH_RATE / sens;
       if (tr.pushArmed && tr.vs > thr && speed < this.swingThreshold() * 0.8) {
         if (tr.fingers <= 1) events.push('hit');
+        this.lastHitT = t;
         tr.pushArmed = false;
         tr.pushT = t;
       } else if (!tr.pushArmed && tr.vs < T.PUSH_REARM && t - tr.pushT > 250) {
