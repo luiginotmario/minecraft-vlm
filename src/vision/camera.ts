@@ -16,6 +16,7 @@ export class CameraTracker {
   private ready = false;
   private frameWaiting = false;
   private running = false;
+  private session = 0;
   private resultTimes: number[] = [];
   delegate = '';
   inferMs = 0;
@@ -100,23 +101,30 @@ export class CameraTracker {
     const v = this.video as HTMLVideoElement & {
       requestVideoFrameCallback?: (cb: () => void) => number;
     };
+    const session = ++this.session;
+    const live = () => this.running && session === this.session;
+    let lastCallback = 0;
     if (v.requestVideoFrameCallback) {
       const onFrame = () => {
-        if (!this.running) return;
+        if (!live()) return;
+        lastCallback = performance.now();
         this.frameWaiting = true;
         this.pump();
         v.requestVideoFrameCallback!(onFrame);
       };
       v.requestVideoFrameCallback(onFrame);
-    } else {
-      const tick = () => {
-        if (!this.running) return;
+    }
+    // Watchdog: some browsers stop video frame callbacks when the video isn't
+    // painted (preview hidden) or don't support them at all. Poll instead.
+    const poll = () => {
+      if (!live()) return;
+      if (performance.now() - lastCallback > 150) {
         this.frameWaiting = true;
         this.pump();
-        setTimeout(tick, 16);
-      };
-      tick();
-    }
+      }
+      setTimeout(poll, 16);
+    };
+    poll();
   }
 
   private pump() {

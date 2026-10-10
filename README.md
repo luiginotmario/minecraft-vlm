@@ -23,7 +23,7 @@ Open the printed URL in Chrome, Edge or Safari, then click **Play with camera**.
 | Body | Action |
 |---|---|
 | Turn or tilt your head | Look around. Small movements map directly; hold your head turned past the deadzone and the view keeps turning, like a joystick. |
-| Chop down fast with either hand | Hit the block under the crosshair. Dirt breaks in one hit, wood in two, stone in three, ore in four. |
+| Chop down fast with either hand, or both like an axe | Hit the block under the crosshair. Dirt breaks in one hit, wood in two, stone in three, ore in four. |
 | Punch toward the camera with a fist | Hit |
 | Push an open palm toward the camera | Place the selected block |
 | Swipe sideways with fingers out | Next block (swipe to your right) or previous (to your left) |

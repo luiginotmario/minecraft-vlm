@@ -51,6 +51,8 @@ export const T = {
   CALIBRATION_MS: 900,
 };
 
+const DEDUPE_MS: Record<GestureEvent, number> = { hit: 130, place: 250, next: 200, prev: 200, jump: 350 };
+
 const WRIST = 0, THUMB_TIP = 4, INDEX_MCP = 5, MIDDLE_MCP = 9, RING_MCP = 13, PINKY_MCP = 17;
 const FINGERS: [number, number][] = [
   [8, 6],
@@ -153,8 +155,16 @@ export class GestureEngine {
     const ar = frame.w / frame.h;
     this.updateFace(frame, ar, events);
     this.updateHands(frame, ar, events);
-    return events;
+    // One action per motion: a two-handed axe swing is two tracked hands
+    // firing together, which should count once.
+    return events.filter((e) => {
+      if (frame.ts - this.lastEvent[e] < DEDUPE_MS[e]) return false;
+      this.lastEvent[e] = frame.ts;
+      return true;
+    });
   }
+
+  private lastEvent: Record<GestureEvent, number> = { hit: -1e9, place: -1e9, next: -1e9, prev: -1e9, jump: -1e9 };
 
   // ───────────────────────── face: look, jog, jump, lean ─────────────────────────
 

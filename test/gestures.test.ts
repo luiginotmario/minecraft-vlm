@@ -271,4 +271,16 @@ describe('hands', () => {
     expect(s.count('hit')).toBe(1);
     expect(s.g.hands.length).toBe(2);
   });
+
+  it('a two-handed axe swing counts as one hit', () => {
+    const s = new Sim();
+    s.calibrate();
+    let y = 0.3;
+    for (let i = 0; i < 6; i++) s.step(still(), [hand(0.45, y, 0.1, 'fist'), hand(0.58, y + 0.02, 0.1, 'fist')]);
+    for (let i = 0; i < 5; i++) {
+      y += 0.05;
+      s.step(still(), [hand(0.45, y, 0.1, 'fist'), hand(0.58, y + 0.02, 0.1, 'fist')]);
+    }
+    expect(s.count('hit')).toBe(1);
+  });
 });
