@@ -2,8 +2,10 @@ import { DEFAULT_GESTURES, type GestureSettings } from './vision/gestures';
 
 export interface Settings {
   viewDistance: number;
-  /** Cap on device pixel ratio. */
+  /** Cap on device pixel ratio. 1 renders at CSS pixels, a quarter of the work on Retina. */
   pixelRatio: number;
+  /** Frame rate cap; displays at 120 Hz would otherwise render twice as much. */
+  maxFps: number;
   fov: number;
   mouseSensitivity: number;
   /** Degrees of view per degree of head turn, applied directly. */
@@ -24,7 +26,8 @@ export interface Settings {
 
 export const DEFAULTS: Settings = {
   viewDistance: 8,
-  pixelRatio: 1.5,
+  pixelRatio: 1,
+  maxFps: 60,
   fov: 75,
   mouseSensitivity: 1,
   headGain: 1,
@@ -39,7 +42,8 @@ export const DEFAULTS: Settings = {
   gestures: { ...DEFAULT_GESTURES },
 };
 
-const KEY = 'mcvlm.settings.v1';
+// v2: lighter defaults (1× resolution, 60 fps cap); older saves are ignored.
+const KEY = 'mcvlm.settings.v2';
 
 export function loadSettings(): Settings {
   try {

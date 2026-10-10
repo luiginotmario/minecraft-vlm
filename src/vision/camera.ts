@@ -1,8 +1,10 @@
 import type { FromVision, ToVision, VisionFrame } from './protocol';
 
 const CDN = 'https://storage.googleapis.com/mediapipe-models';
-/** Frames are downscaled before inference; the models run at ~256px anyway. */
-const INFER_WIDTH = 480;
+/** Frames are downscaled before inference; the models run at ≤256px anyway. */
+const INFER_WIDTH = 384;
+/** Inference rate cap. 30 Hz is plenty for swings and keeps the GPU free for the game. */
+const MAX_HZ = 30;
 
 /**
  * Streams webcam frames to the vision worker with backpressure: a new frame is
@@ -17,6 +19,7 @@ export class CameraTracker {
   private frameWaiting = false;
   private running = false;
   private session = 0;
+  private lastSent = 0;
   private resultTimes: number[] = [];
   delegate = '';
   inferMs = 0;
@@ -44,7 +47,7 @@ export class CameraTracker {
     this.onStatus?.('Requesting camera…');
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 60, min: 24 } },
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 } },
     });
     this.video.srcObject = this.stream;
     this.video.muted = true;
@@ -122,13 +125,18 @@ export class CameraTracker {
         this.frameWaiting = true;
         this.pump();
       }
-      setTimeout(poll, 16);
+      setTimeout(poll, 50);
     };
     poll();
   }
 
   private pump() {
     if (!this.ready || this.busy || !this.frameWaiting || !this.running || !this.worker) return;
+    // Background tab: no inference at all.
+    if (document.hidden) return;
+    const now = performance.now();
+    if (now - this.lastSent < 1000 / MAX_HZ - 3) return;
+    this.lastSent = now;
     const vw = this.video.videoWidth, vh = this.video.videoHeight;
     if (!vw || !vh) return;
     this.busy = true;

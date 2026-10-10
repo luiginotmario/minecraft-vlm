@@ -25,7 +25,8 @@ const settings: Settings = loadSettings();
 
 // ───────────────────────── renderer & scene ─────────────────────────
 
-const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+// 'default' lets dual-GPU Macs stay on the integrated GPU.
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'default' });
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 renderer.autoClear = false;
 renderer.info.autoReset = false;
@@ -371,9 +372,35 @@ function headRate(deg: number, range: number, dead: number, max: number) {
   return Math.sign(deg) * max * Math.pow(e, 1.5);
 }
 
+// Frame limiter: render at most maxFps (15 behind the menu), never every
+// refresh of a 120 Hz display. Skipped refreshes cost nothing.
+let lastRender = 0;
 function frame(now: number) {
   requestAnimationFrame(frame);
+  const fps = menuOpen ? 15 : settings.maxFps;
+  if (now - lastRender < 1000 / fps - 2) return;
+  lastRender = now;
   tick(now);
+}
+
+/**
+ * Compile every shader up front. On macOS a lazy compile blocks the frame for
+ * hundreds of ms the first time something appears (e.g. the block outline).
+ */
+function precompile() {
+  highlight.group.visible = true;
+  highlight.damage(0.5);
+  // Chunk meshes don't exist yet; a throwaway mesh compiles the water shader.
+  const geo = new THREE.BoxGeometry();
+  geo.setAttribute('lt', new THREE.BufferAttribute(new Float32Array(48), 2));
+  const probe = new THREE.Mesh(geo, mats.water);
+  scene.add(probe);
+  renderer.compile(scene, camera);
+  renderer.compile(hand.scene, hand.camera);
+  scene.remove(probe);
+  geo.dispose();
+  highlight.damage(0);
+  highlight.hide();
 }
 
 function tick(now: number) {
@@ -501,6 +528,7 @@ function tick(now: number) {
 }
 
 applySettings();
+precompile();
 world.update(player.x, player.z, true);
 requestAnimationFrame(frame);
 

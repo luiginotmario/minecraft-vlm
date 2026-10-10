@@ -35,6 +35,7 @@ export function buildSettings(
 
     { kind: 'group', label: 'Game' },
     { kind: 'range', label: 'View distance', min: 3, max: 14, step: 1, get: () => s.viewDistance, set: (v) => (s.viewDistance = v), fmt: (v) => `${v}` },
+    { kind: 'range', label: 'Max FPS', min: 30, max: 120, step: 30, get: () => s.maxFps, set: (v) => (s.maxFps = v), fmt: (v) => `${v}` },
     { kind: 'range', label: 'Resolution', min: 0.5, max: 2, step: 0.25, get: () => s.pixelRatio, set: (v) => (s.pixelRatio = v), fmt: (v) => `${v}×` },
     { kind: 'range', label: 'Field of view', min: 50, max: 110, step: 1, get: () => s.fov, set: (v) => (s.fov = v), fmt: (v) => `${v}°` },
     { kind: 'range', label: 'Mouse sensitivity', min: 0.2, max: 3, step: 0.05, get: () => s.mouseSensitivity, set: (v) => (s.mouseSensitivity = v), fmt: (v) => `${v.toFixed(2)}×` },
