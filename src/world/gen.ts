@@ -109,8 +109,15 @@ export function createGenerator(seed: number) {
         const h = heights[(z + 2) * (CS + 4) + (x + 2)];
         const beach = h <= SEA + 1;
         const snowy = h >= snowLine(wx, wz);
-        const dirtDepth = 3 + Math.floor(hash3(wx, 7, wz, seed) * 2);
-        const top = beach ? SAND : snowy ? SNOW : GRASS;
+        // Steep cliffs show bare stone rather than stripes of dirt.
+        const hi = (z + 2) * (CS + 4) + (x + 2);
+        const slope = Math.max(
+          Math.abs(h - heights[hi - 1]), Math.abs(h - heights[hi + 1]),
+          Math.abs(h - heights[hi - (CS + 4)]), Math.abs(h - heights[hi + (CS + 4)]),
+        );
+        const cliff = slope >= 4 && !beach;
+        const dirtDepth = cliff ? 0 : 3 + Math.floor(hash3(wx, 7, wz, seed) * 2);
+        const top = cliff ? (snowy ? SNOW : STONE) : beach ? SAND : snowy ? SNOW : GRASS;
         const under = beach ? SAND : DIRT;
         for (let y = 0; y <= h; y++) {
           let id: number;

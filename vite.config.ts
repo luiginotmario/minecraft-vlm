@@ -2,6 +2,6 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   worker: { format: 'es' },
-  build: { target: 'es2022' },
+  build: { target: 'es2022', chunkSizeWarningLimit: 800 },
   server: { host: true },
 });

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Sfx } from './audio';
 import { Interaction } from './game/interaction';
 import { EYE, Player, type MoveInput } from './game/player';
-import { createAtlas, createSky, createWorldMaterials } from './render/materials';
+import { createAtlas, createClouds, createSky, createWorldMaterials } from './render/materials';
 import { BlockHighlight, Particles } from './render/effects';
 import { Hand } from './render/hand';
 import { loadSettings, type Settings } from './settings';
@@ -47,6 +47,9 @@ mats.uniforms.fogColor.value.copy(HORIZON);
 
 const world = new World(mats.opaque, mats.water, settings.viewDistance);
 scene.add(world.group);
+const clouds = createClouds(world.seed);
+clouds.uniforms.fogColor.value.copy(HORIZON);
+scene.add(clouds.mesh);
 
 const highlight = new BlockHighlight();
 scene.add(highlight.group);
@@ -250,6 +253,7 @@ let lastFaceSeen = 0;
 
 tracker.onStatus = (s) => {
   visionStatus = s;
+  if (!s) lastFaceSeen = performance.now(); // models ready: give the face a moment to show up
   menuStatus.textContent = s;
   menuStatus.classList.toggle('error', s.startsWith('Vision failed'));
 };
@@ -420,6 +424,8 @@ function frame(now: number) {
   }
   camera.updateMatrixWorld();
   sky.position.copy(camera.position);
+  clouds.mesh.position.set(camera.position.x, 118, camera.position.z);
+  clouds.uniforms.time.value = now / 1000;
 
   // Targeting and held actions (mouse or pinch).
   if (playing) {
@@ -458,8 +464,8 @@ function frame(now: number) {
   if (!spawned) status = 'Generating world…';
   else if (visionStatus && !menuOpen) status = visionStatus;
   else if (tracker.active && !menuOpen) {
-    if (gestures.calibrating) status = 'Look at the screen and hold still…';
-    else if (now - lastFaceSeen > 1500) status = "Can't see your face. Move into the camera's view.";
+    if (now - lastFaceSeen > 1500) status = "Can't see your face. Move into the camera's view.";
+    else if (gestures.calibrating) status = 'Look at the screen and hold still…';
   }
   hud.status(status);
 
@@ -476,7 +482,10 @@ function frame(now: number) {
           `xyz ${player.x.toFixed(1)} ${player.y.toFixed(1)} ${player.z.toFixed(1)}${player.fly ? '  fly' : ''}\n` +
           (tracker.active
             ? `vision ${tracker.hz} Hz  infer ${tracker.inferMs.toFixed(1)} ms  lag ${tracker.latencyMs.toFixed(0)} ms  ${tracker.delegate}\n` +
-              `head ${gestures.yaw.toFixed(1)}° ${gestures.pitch.toFixed(1)}°  jog ${gestures.jog}`
+              `head ${gestures.yaw.toFixed(1)}° ${gestures.pitch.toFixed(1)}°  jog ${gestures.jog}` +
+              gestures.hands
+                .map((h) => `\nhand ${h.id}: vx ${h.vx.toFixed(1)} vy ${h.vy.toFixed(1)} fingers ${h.fingers}${h.pinched ? ' pinch' : ''}`)
+                .join('')
             : 'camera off'),
       );
     }

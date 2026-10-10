@@ -150,9 +150,22 @@ function faceVisible(id: number, nb: number) {
   return nb !== id;
 }
 
+/** Highest y (exclusive) that holds any block, including the border. */
+function topOfVolume(vol: Uint8Array) {
+  const layer = PX * PX;
+  for (let y = CH - 1; y >= 0; y--) {
+    const start = (y + 1) * layer;
+    for (let i = start; i < start + layer; i++) if (vol[i] !== AIR) return y + 1;
+  }
+  return 0;
+}
+
 export function meshChunk(vol: Uint8Array): ChunkMesh {
   opaqueB.reset();
   waterB.reset();
+  // Skip the empty sky above the terrain; it's most of the volume.
+  const top = topOfVolume(vol);
+  DIMS[1] = top;
 
   for (let d = 0; d < 3; d++) {
     const u = (d + 1) % 3;
@@ -244,7 +257,7 @@ export function meshChunk(vol: Uint8Array): ChunkMesh {
     }
   }
 
-  meshWater(vol);
+  meshWater(vol, top);
   return { opaque: opaqueB.take(), water: waterB.take() };
 }
 
@@ -272,9 +285,9 @@ function emit(
 const AO4 = [3, 3, 3, 3];
 const WATER_TOP = 0.875;
 
-function meshWater(vol: Uint8Array) {
+function meshWater(vol: Uint8Array, top: number) {
   const layer = BLOCKS[WATER].tex[0];
-  for (let y = 0; y < CH; y++) {
+  for (let y = 0; y < top; y++) {
     for (let z = 0; z < CS; z++) {
       for (let xx = 0; xx < CS; xx++) {
         const pi = pIndex(xx, y, z);

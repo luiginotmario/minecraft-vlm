@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TILE_COUNT } from '../world/blocks';
+import { makeNoise } from '../world/noise';
 import { TILE } from '../world/textures';
 
 /** Upload tiles (top row first) into a mipmapped texture array, flipped so t=1 is the top. */
@@ -46,7 +47,7 @@ uniform float time;
 out vec2 vUv;
 flat out float vLayer;
 out float vLight;
-out float vDist;
+out vec2 vWorldXZ;
 #ifdef WATER
 out float vWave;
 #endif
@@ -59,7 +60,7 @@ void main() {
   vUv += vec2(time * 0.03, time * 0.017);
   vWave = sin(world.x * 0.9 + time * 1.4) * cos(world.z * 0.7 + time * 1.1);
 #endif
-  vDist = length(world.xz - cameraPosition.xz);
+  vWorldXZ = world.xz;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
@@ -71,10 +72,11 @@ uniform sampler2DArray atlas;
 uniform vec3 fogColor;
 uniform float fogNear;
 uniform float fogFar;
+uniform vec3 cameraPosition;
 in vec2 vUv;
 flat in float vLayer;
 in float vLight;
-in float vDist;
+in vec2 vWorldXZ;
 #ifdef WATER
 in float vWave;
 #endif
@@ -89,7 +91,8 @@ void main() {
   vec3 col = c.rgb * vLight;
   float a = 1.0;
 #endif
-  float f = smoothstep(fogNear, fogFar, vDist);
+  // Per pixel: greedy quads are large, so interpolated distance would be off.
+  float f = smoothstep(fogNear, fogFar, length(vWorldXZ - cameraPosition.xz));
   fragColor = vec4(mix(col, fogColor, f), a);
 }
 `;
@@ -149,4 +152,65 @@ export function createSky(horizon: THREE.Color, zenith: THREE.Color) {
   mesh.renderOrder = -1;
   mesh.frustumCulled = false;
   return mesh;
+}
+
+/** Flat blocky cloud layer that drifts slowly and follows the camera. */
+export function createClouds(seed: number) {
+  const N = 64;
+  const data = new Uint8Array(N * N * 4);
+  const noise = makeNoise(seed ^ 0x5eed);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      // Tileable by sampling noise on a torus.
+      const a = (x / N) * Math.PI * 2, b = (y / N) * Math.PI * 2;
+      const v = noise.n3(Math.cos(a) * 3, Math.sin(a) * 3 + Math.cos(b) * 3, Math.sin(b) * 3);
+      const i = (y * N + x) * 4;
+      data[i] = data[i + 1] = data[i + 2] = 255;
+      data[i + 3] = v > 0.18 ? 255 : 0;
+    }
+  }
+  const tex = new THREE.DataTexture(data, N, N);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.needsUpdate = true;
+
+  const uniforms = {
+    map: { value: tex },
+    time: { value: 0 },
+    fogColor: { value: new THREE.Color() },
+  };
+  const mat = new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    vertexShader: /* glsl */ `
+      varying vec2 vWorld;
+      void main() {
+        vec4 w = modelMatrix * vec4(position, 1.0);
+        vWorld = w.xz;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D map;
+      uniform float time;
+      uniform vec3 fogColor;
+      varying vec2 vWorld;
+      void main() {
+        // Per pixel: the plane has only four vertices, so a varying would be constant.
+        float vDist = length(vWorld - cameraPosition.xz);
+        vec2 uv = (vWorld + vec2(time * 1.2, 0.0)) / (64.0 * 12.0);
+        float a = texture2D(map, uv).a;
+        if (a < 0.5) discard;
+        float fade = 1.0 - smoothstep(180.0, 420.0, vDist);
+        gl_FragColor = vec4(mix(fogColor, vec3(1.0), fade), 0.8 * fade);
+      }`,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 2;
+  return { mesh, uniforms };
 }

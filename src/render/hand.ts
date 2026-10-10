@@ -11,7 +11,7 @@ export class Hand {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(60, 1, 0.05, 10);
   private mesh: THREE.Mesh;
-  private geo = new THREE.BoxGeometry(0.28, 0.28, 0.28);
+  private geo = new THREE.BoxGeometry(0.24, 0.24, 0.24);
   private swingT = 1;
   private placeT = 1;
   private switchT = 1;
@@ -65,7 +65,7 @@ export class Hand {
     const p = this.placeT < 1 ? Math.sin(easeOut(this.placeT) * Math.PI) : 0;
     const drop = 1 - easeOut(this.switchT);
 
-    this.mesh.position.set(0.5 + bx - s * 0.2, -0.4 + by - s * 0.1 - drop * 0.3, -0.85 - s * 0.15 + p * 0.12);
+    this.mesh.position.set(0.52 + bx - s * 0.2, -0.4 + by - s * 0.1 - drop * 0.3, -0.85 - s * 0.15 + p * 0.12);
     this.mesh.rotation.set(0.22 - s * 0.9, 0.62 + s * 0.35, 0.04);
   }
 }
