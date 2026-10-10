@@ -77,8 +77,13 @@ export class Preview {
     this.moveEl.textContent = g.calibrating ? 'Hold still…' : move;
     this.moveEl.classList.toggle('on', g.jog > 0 || g.lean !== 0);
     const hands = g.hands.length;
-    const pinching = g.hands.some((h) => h.pinched);
-    this.handsEl.textContent = pinching ? 'Pinch' : hands ? `${hands} hand${hands > 1 ? 's' : ''}` : 'No hands';
+    const pinching = g.hands.some((h) => h.pinched && !h.pinchBlocked);
+    const blocked = g.hands.some((h) => h.pinched && h.pinchBlocked);
+    this.handsEl.textContent = pinching
+      ? 'Pinch'
+      : blocked
+        ? 'Pinch: hold still, release, retry'
+        : hands ? `${hands} hand${hands > 1 ? 's' : ''}` : 'No hands';
     this.handsEl.classList.toggle('on', pinching);
     if (this.rateEl.textContent !== stats) this.rateEl.textContent = stats;
   }

@@ -30,7 +30,7 @@ function face(yawDeg: number, pitchDeg: number, cx = 0.5, cy = 0.45, scale = 0.2
   return out;
 }
 
-type Pose = 'open' | 'fist' | 'pinch' | 'axe';
+type Pose = 'open' | 'fist' | 'pinch' | 'axe' | 'pinchCurled';
 const OPEN: [number, number][] = [
   [0, 0.5], [-0.3, 0.3], [-0.5, 0.1], [-0.65, -0.1], [-0.8, -0.25],
   [-0.25, -0.45], [-0.3, -0.85], [-0.32, -1.05], [-0.34, -1.25],
@@ -55,12 +55,18 @@ function hand(cx: number, cy: number, size: number, pose: Pose = 'open'): HandFr
       pts[8] = [-0.6, -0.85];
       pts[4] = [-0.6, -0.82];
     }
-  } else if (pose === 'pinch') {
+  } else if (pose === 'pinch' || pose === 'pinchCurled') {
     // Index bends to meet the thumb; the tip stays well away from its knuckle.
     pts[6] = [-0.38, -0.85];
     pts[7] = [-0.45, -0.95];
     pts[8] = [-0.5, -0.95];
     pts[4] = [-0.52, -0.92];
+    if (pose === 'pinchCurled') {
+      // The natural way: other fingers loosely curled, not straight.
+      pts[10] = [0, -0.9]; pts[11] = [-0.05, -1.0]; pts[12] = [-0.1, -0.85];
+      pts[14] = [0.25, -0.82]; pts[15] = [0.22, -0.92]; pts[16] = [0.17, -0.8];
+      pts[18] = [0.48, -0.68]; pts[19] = [0.45, -0.76]; pts[20] = [0.4, -0.66];
+    }
   }
   const lm = new Float32Array(63);
   pts.forEach(([x, y], i) => {
@@ -268,6 +274,14 @@ describe('hands', () => {
       for (let i = 0; i < 10; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'pinch')]); // held: still one
     }
     expect(s.count('place')).toBe(3);
+  });
+
+  it('a natural pinch with the other fingers loosely curled places', () => {
+    const s = new Sim();
+    s.calibrate();
+    for (let i = 0; i < 4; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'open')]);
+    for (let i = 0; i < 4; i++) s.step(still(), [hand(0.5, 0.5, 0.1, 'pinchCurled')]);
+    expect(s.count('place')).toBe(1);
   });
 
   it('an axe grip held still is not a pinch', () => {

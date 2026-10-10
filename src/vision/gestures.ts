@@ -44,7 +44,11 @@ export const T = {
   PINCH_MAX_SPEED: 4, // the pinch must start with the hand fairly still
   PINCH_AFTER_HIT_MS: 700, // an axe grip after a chop looks like a pinch; ignore it
   PINCH_FRAMES: 2, // held this many frames, so a passing finger brush doesn't count
-  PINCH_RELAXED_FINGERS: 2, // of middle/ring/pinky not folded into the palm (an axe grip folds them)
+  // An axe grip folds middle/ring/pinky tight into the palm. A pinch may curl
+  // them a bit, so only a hard fold (tip pulled well inside the middle joint)
+  // counts, and one unfolded finger is enough.
+  PINCH_FOLD_RATIO: 0.85,
+  PINCH_RELAXED_FINGERS: 1,
   JOG_AMP: 0.06, // head bob amplitude (face heights) that counts as a step
   JOG_STEPS: 3, // bob crossings needed within the window to start moving
   JOG_WINDOW_MS: 1300,
@@ -86,6 +90,10 @@ interface HandTrack {
   /** This pinch began mid-motion or right after a hit; it can't place until released. */
   pinchBlocked: boolean;
   pinchFrames: number;
+  // Last pinch measurements, for the F3 readout.
+  pinchGap: number;
+  indexReach: number;
+  relaxed: number;
   swingArmed: boolean;
   swingT: number;
   swipeArmed: boolean;
@@ -99,6 +107,11 @@ export interface HandView {
   id: number;
   fingers: number;
   pinched: boolean;
+  /** Pinched but not allowed to place (started moving or right after a chop). */
+  pinchBlocked: boolean;
+  pinchGap: number;
+  indexReach: number;
+  relaxed: number;
   vx: number;
   vy: number;
 }
@@ -343,7 +356,10 @@ export class GestureEngine {
 
     this.hands = this.tracks
       .filter((tr) => matched.has(tr))
-      .map((tr) => ({ id: tr.id, fingers: tr.fingers, pinched: tr.pinched, vx: tr.vx, vy: tr.vy }));
+      .map((tr) => ({
+        id: tr.id, fingers: tr.fingers, pinched: tr.pinched, pinchBlocked: tr.pinchBlocked,
+        pinchGap: tr.pinchGap, indexReach: tr.indexReach, relaxed: tr.relaxed, vx: tr.vx, vy: tr.vy,
+      }));
   }
 
   private swingThreshold() {
@@ -353,7 +369,7 @@ export class GestureEngine {
   private newTrack(cx: number, cy: number, t: number): HandTrack {
     const tr: HandTrack = {
       id: this.nextId++, seen: t, prevSeen: t, cx, cy, size: 0, logS: [], logT: [],
-      vx: 0, vy: 0, vs: 0, samples: 0, fingers: 0, pinched: false, pinchFired: false, pinchBlocked: false, pinchFrames: 0,
+      vx: 0, vy: 0, vs: 0, samples: 0, fingers: 0, pinched: false, pinchFired: false, pinchBlocked: false, pinchFrames: 0, pinchGap: 0, indexReach: 0, relaxed: 0,
       swingArmed: true, swingT: -1e9, swipeArmed: true, swipeDir: 0, swipeT: -1e9, pushArmed: true, pushT: -1e9,
     };
     this.tracks.push(tr);
@@ -384,8 +400,15 @@ export class GestureEngine {
     // other fingers into a fist; a pinch leaves them relaxed.
     let relaxed = 0;
     for (const [tip, pip] of FINGERS.slice(1)) {
-      if (dist3(lm, WRIST, tip, ar) > dist3(lm, WRIST, pip, ar)) relaxed++;
+      // Folded only if both the 2D and 3D views agree; depth alone is noisy.
+      const folded =
+        dist2(lm, WRIST, tip, ar) < dist2(lm, WRIST, pip, ar) * T.PINCH_FOLD_RATIO &&
+        dist3(lm, WRIST, tip, ar) < dist3(lm, WRIST, pip, ar) * T.PINCH_FOLD_RATIO;
+      if (!folded) relaxed++;
     }
+    tr.pinchGap = pinchR;
+    tr.indexReach = indexReach;
+    tr.relaxed = relaxed;
     const pinchShape = pinchR < T.PINCH_ON && indexReach > T.PINCH_INDEX_REACH && relaxed >= T.PINCH_RELAXED_FINGERS;
     if (!tr.pinched && pinchShape) {
       tr.pinched = true;

@@ -10,7 +10,7 @@ import { Hud } from './ui/hud';
 import { Preview } from './ui/preview';
 import { buildSettings } from './ui/settingsPanel';
 import { CameraTracker } from './vision/camera';
-import { GestureEngine, type GestureEvent } from './vision/gestures';
+import { GestureEngine, T, type GestureEvent } from './vision/gestures';
 import type { VisionFrame } from './vision/protocol';
 import { BLOCKS, HOTBAR, SEA } from './world/blocks';
 import { createGenerator } from './world/gen';
@@ -521,7 +521,13 @@ function tick(now: number) {
             ? `vision ${tracker.hz} Hz  infer ${tracker.inferMs.toFixed(1)} ms  lag ${tracker.latencyMs.toFixed(0)} ms  ${tracker.delegate}\n` +
               `head ${gestures.yaw.toFixed(1)}° ${gestures.pitch.toFixed(1)}°  jog ${gestures.jog}` +
               gestures.hands
-                .map((h) => `\nhand ${h.id}: vx ${h.vx.toFixed(1)} vy ${h.vy.toFixed(1)} fingers ${h.fingers}${h.pinched ? ' pinch' : ''}`)
+                .map(
+                  (h) =>
+                    `\nhand ${h.id}: vx ${h.vx.toFixed(1)} vy ${h.vy.toFixed(1)} fingers ${h.fingers}` +
+                    `\n  pinch gap ${h.pinchGap.toFixed(2)}/${T.PINCH_ON} reach ${h.indexReach.toFixed(2)}/${T.PINCH_INDEX_REACH}` +
+                    ` relaxed ${h.relaxed}/${T.PINCH_RELAXED_FINGERS}` +
+                    (h.pinched ? (h.pinchBlocked ? '  PINCH blocked' : '  PINCH') : ''),
+                )
                 .join('')
             : 'camera off'),
       );
