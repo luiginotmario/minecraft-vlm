@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>minecraft-vlm</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="game"></div>
+
+    <div id="hud">
+      <div id="crosshair"></div>
+      <div id="gesture" aria-live="polite"></div>
+      <div id="hotbar"></div>
+      <div id="blockname"></div>
+      <div id="stats"></div>
+      <div id="status"></div>
+    </div>
+
+    <div id="pip" hidden>
+      <div class="pip-video">
+        <video id="video" muted playsinline></video>
+        <canvas id="pip-overlay" width="240" height="180"></canvas>
+      </div>
+      <div class="pip-row">
+        <canvas id="pip-stick" width="64" height="64" title="Head look: inner ring is the deadzone"></canvas>
+        <div class="pip-info">
+          <div id="pip-move" class="chip">Still</div>
+          <div id="pip-hands" class="chip">No hands</div>
+          <div id="pip-rate" class="pip-rate"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="menu">
+      <div class="card">
+        <header>
+          <h1>minecraft-vlm</h1>
+          <p class="sub">A voxel world you play with your body.</p>
+        </header>
+
+        <div class="actions">
+          <button id="btn-camera" class="primary">Play with camera</button>
+          <button id="btn-play">Keyboard &amp; mouse</button>
+        </div>
+        <p id="menu-status" class="menu-status"></p>
+
+        <div class="controls">
+          <section>
+            <h2>Body</h2>
+            <dl>
+              <dt>Turn / tilt head</dt><dd>Look around. Hold it turned to keep turning.</dd>
+              <dt>Chop down</dt><dd>Mine. Stone takes three swings.</dd>
+              <dt>Punch with a fist</dt><dd>Mine</dd>
+              <dt>Push open palm forward</dt><dd>Place block</dd>
+              <dt>Swipe sideways</dt><dd>Switch block</dd>
+              <dt>Pinch (OK sign), hold</dt><dd>Keep mining</dd>
+              <dt>Jog in place</dt><dd>Walk; jog faster to sprint</dd>
+              <dt>Hop</dt><dd>Jump</dd>
+            </dl>
+          </section>
+          <section>
+            <h2>Keys</h2>
+            <dl>
+              <dt>WASD · Space · Shift</dt><dd>Move · jump · sprint</dd>
+              <dt>Mouse</dt><dd>Look; left mine, right place</dd>
+              <dt>1–9 · scroll</dt><dd>Select block</dd>
+              <dt>F</dt><dd>Fly (Space up, Shift down)</dd>
+              <dt>C</dt><dd>Recalibrate head</dd>
+              <dt>V</dt><dd>Camera on/off</dd>
+              <dt>F3</dt><dd>Stats</dd>
+              <dt>Esc</dt><dd>This menu</dd>
+            </dl>
+          </section>
+        </div>
+
+        <details id="settings">
+          <summary>Settings</summary>
+          <div id="settings-body"></div>
+        </details>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
