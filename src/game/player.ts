@@ -65,6 +65,19 @@ export class Player {
     );
   }
 
+  /**
+   * Stand on a block placed at the player's feet: lift the player one block
+   * if there's headroom. Returns false (and doesn't move) if there isn't.
+   */
+  liftOnto(blockY: number) {
+    const y = blockY + 1 + EPS;
+    if (this.overlaps(this.x, y, this.z)) return false;
+    this.y = y;
+    this.vy = Math.max(0, this.vy);
+    this.onGround = true;
+    return true;
+  }
+
   /** Move along one axis, stopping flush against blocks. Returns true on collision. */
   private moveAxis(axis: 0 | 1 | 2, d: number) {
     if (d === 0) return false;

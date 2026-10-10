@@ -107,7 +107,16 @@ export class Interaction {
     const bx = t.x + t.nx, by = t.y + t.ny, bz = t.z + t.nz;
     const existing = this.world.getBlock(bx, by, bz);
     if (existing !== AIR && existing !== WATER) return false;
-    if (BLOCKS[id].solid && this.player.intersectsBlock(bx, by, bz)) return false;
+    if (BLOCKS[id].solid && this.player.intersectsBlock(bx, by, bz)) {
+      // Placing straight down into the space you're standing in builds a
+      // pillar: the block goes under your feet and you're lifted onto it.
+      const p = this.player;
+      const underFeet = bx === Math.floor(p.x) && bz === Math.floor(p.z) && by === Math.floor(p.y);
+      if (!underFeet || !p.liftOnto(by)) return false; // no headroom to step up
+      this.world.setBlock(bx, by, bz, id);
+      this.sfx.play('place', tone(id));
+      return true;
+    }
     this.world.setBlock(bx, by, bz, id);
     this.sfx.play('place', tone(id));
     return true;

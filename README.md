@@ -26,6 +26,7 @@ Open the printed URL in Chrome, Edge or Safari, then click **Play with camera**.
 | Chop down fast with either hand, or both like an axe | Hit the block under the crosshair. Dirt breaks in one hit, wood in two, stone in three, ore in four. |
 | Punch toward the camera with a fist | Hit |
 | Pinch thumb and index together | Place the selected block (one per pinch; release and pinch again for the next) |
+| Look straight down and pinch | Place a block under your feet and step up onto it. Repeat to build a pillar out of a hole. |
 | Swipe sideways with fingers out | Next block (swipe to your right) or previous (to your left) |
 | Jog in place | Walk forward; jog faster to sprint |
 | Hop | Jump |
